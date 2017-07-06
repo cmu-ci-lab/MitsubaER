@@ -206,6 +206,16 @@ public:
 		}
 	}
 
+	/* Just return the next random Float value */
+	Float nextFloat() {
+		return m_random->nextFloat();
+	}
+
+	/* Just return the next random size_t value */
+	size_t nextSize(size_t n) {
+		return m_random->nextSize(n);
+	}
+
 	std::string toString() const {
 		std::ostringstream oss;
 		oss << "StratifiedSampler[" << endl

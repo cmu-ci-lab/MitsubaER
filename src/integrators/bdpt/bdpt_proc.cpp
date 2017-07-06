@@ -74,6 +74,11 @@ public:
 		result->clear();
 		m_hilbertCurve.initialize(TVector2<uint8_t>(rect->getSize()));
 
+//		if( !(rect->getOffset().x == 512 && rect->getOffset().y <= 1e6) )
+//			return;
+//
+//		std::cout << "image block:" << rect->getOffset().x << ", " << rect->getOffset().y << std::endl;
+
 		#if defined(MTS_DEBUG_FP)
 			enableFPExceptions();
 		#endif
@@ -110,7 +115,7 @@ public:
 				sensorSubpath.initialize(m_scene, time, ERadiance, m_pool);
 
 				/* Perform a random walk using alternating steps on each path */
-				Path::alternatingRandomWalkFromPixel(m_scene, m_sampler,
+				Path::alternatingRandomWalkFromPixel(m_scene, m_sampler,result,
 					emitterSubpath, emitterDepth, sensorSubpath,
 					sensorDepth, offset, m_config.rrDepth, m_pool);
 
@@ -140,17 +145,46 @@ public:
 		PathEdge tempEdge, connectionEdge;
 
 		/* Compute the combined path lengths of the two subpaths */
-		Float *emitterPathlength = (Float *) alloca(emitterSubpath.vertexCount() * sizeof(Float)),
-			  *sensorPathlength = (Float *) alloca(sensorSubpath.vertexCount() * sizeof(Float));
+		Float *emitterPathlength = NULL;
+		Float *sensorPathlength = NULL;
 
-	    emitterPathlength[0] = sensorPathlength[0] = Float(0.0f);
-	    emitterPathlength[1] = sensorPathlength[1] = Float(0.0f);
-	    for (size_t i=2; i<emitterSubpath.vertexCount(); ++i){
-			emitterPathlength[i] = emitterPathlength[i-1]+distance(emitterSubpath.vertex(i)->getPosition(),emitterSubpath.vertex(i-1)->getPosition());
-		}
+		if (wr->m_decompositionType != Film::ESteadyState) {
+			emitterPathlength = (Float *) alloca(emitterSubpath.vertexCount() * sizeof(Float));
+			sensorPathlength = (Float *) alloca(sensorSubpath.vertexCount() * sizeof(Float));
 
-		for (size_t i=2; i<sensorSubpath.vertexCount(); ++i){
-			sensorPathlength[i] = sensorPathlength[i-1]+distance(sensorSubpath.vertex(i)->getPosition(),sensorSubpath.vertex(i-1)->getPosition());
+			emitterPathlength[0] = sensorPathlength[0] = Float(0.0f);
+			emitterPathlength[1] = sensorPathlength[1] = Float(0.0f);
+			if (wr->m_decompositionType == Film::ETransient) {
+				for (size_t i = 2; i < emitterSubpath.vertexCount(); ++i){
+					if(EXPECT_NOT_TAKEN(emitterSubpath.edge(i - 1)->opticalLength < Epsilon))
+						emitterPathlength[i] = emitterPathlength[i-1] + emitterSubpath.edge(i - 1)->length * emitterSubpath.vertex(i - 1)->refIndex;
+					else //heterogeneous refractive case
+						emitterPathlength[i] = emitterPathlength[i-1] + emitterSubpath.edge(i - 1)->opticalLength;
+				}
+
+//				for (size_t i = 2; i < sensorSubpath.vertexCount(); ++i){
+				sensorPathlength[2] = Float(0.0f); // hack to get "calibrated" transients
+				sensorPathlength[3] = Float(0.0f); // hack to get "calibrated" transients
+
+				size_t startIndex = 2;
+				if(wr->m_calibratedTransient)
+					startIndex = 3;
+
+				for (size_t i = startIndex; i < sensorSubpath.vertexCount(); ++i){
+					if(EXPECT_NOT_TAKEN(sensorSubpath.edge(i - 1)->opticalLength < Epsilon))
+						sensorPathlength[i] = sensorPathlength[i-1] + sensorSubpath.edge(i - 1)->length * sensorSubpath.vertex(i - 1)->refIndex;
+					else //heterogeneous refractive case
+						sensorPathlength[i] = sensorPathlength[i-1] + sensorSubpath.edge(i - 1)->opticalLength;
+				}
+			} else if (wr->m_decompositionType == Film::EBounce) {
+				for (size_t i = 2; i < emitterSubpath.vertexCount(); ++i){
+					emitterPathlength[i] = emitterPathlength[i-1] + 1.0f;
+				}
+
+				for (size_t i = 2; i < sensorSubpath.vertexCount(); ++i){
+					sensorPathlength[i] = sensorPathlength[i-1] + 1.0f;
+				}
+			}
 		}
 
 		/* Compute the combined weights along the two subpaths */
@@ -170,16 +204,45 @@ public:
 				sensorSubpath.vertex(i-1)->rrWeight *
 				sensorSubpath.edge(i-1)->weight[ERadiance];
 
+//		for (size_t i=1; i<emitterSubpath.vertexCount(); ++i){
+//			if(std::isnan(emitterSubpath.vertex(i-1)->rrWeight) || !std::isfinite(emitterSubpath.vertex(i-1)->rrWeight))
+//				std::cout << "emitterSubpath: v_" << i << "; rrWeight: " << emitterSubpath.vertex(i-1)->rrWeight << std::endl;
+//			if(emitterSubpath.vertex(i-1)->weight[EImportance].isNaN() || !emitterSubpath.vertex(i-1)->weight[EImportance].isValid() )
+//				std::cout << "emitterSubpath: v_" << i << "; spectrum: " << emitterSubpath.vertex(i-1)->weight[EImportance].toString() << std::endl;
+//			if(emitterSubpath.edge(i-1)->weight[EImportance].isNaN() || !emitterSubpath.edge(i-1)->weight[EImportance].isValid() )
+//				std::cout << "emitterSubpath: edge_" << i << "; spectrum: " << emitterSubpath.edge(i-1)->weight[EImportance].toString() << std::endl;
+//
+//		}
+//
+//		for (size_t i=1; i<sensorSubpath.vertexCount(); ++i){
+//			if(std::isnan(sensorSubpath.vertex(i-1)->rrWeight) || !std::isfinite(sensorSubpath.vertex(i-1)->rrWeight))
+//				std::cout << "sensorSubpath: v_" << i << "; rrWeight: " << sensorSubpath.vertex(i-1)->rrWeight << std::endl;
+//			if(sensorSubpath.vertex(i-1)->weight[EImportance].isNaN() || !sensorSubpath.vertex(i-1)->weight[EImportance].isValid() )
+//				std::cout << "sensorSubpath: v_" << i << "; spectrum: " << sensorSubpath.vertex(i-1)->weight[EImportance].toString() << std::endl;
+//			if(sensorSubpath.edge(i-1)->weight[EImportance].isNaN() || !sensorSubpath.edge(i-1)->weight[EImportance].isValid() )
+//				std::cout << "sensorSubpath: edge_" << i << "; spectrum: " << sensorSubpath.edge(i-1)->weight[EImportance].toString() << std::endl;
+//
+//		}
+
 		Spectrum sampleValue(0.0f);
 
 
-		Float *sampleTransientValue = (Float *) alloca(sizeof(Float) * wr->getChannelCount());
-		Float *temp = (Float *) alloca(sizeof(Float) * SPECTRUM_SAMPLES); // Assuming that SPECTRUM_SAMPLES = 3;
+		Float *sampleDecompositionValue = NULL;
+		Float *l_sampleDecompositionValue = NULL;
+		Float *temp = NULL;
 
-		for (int i=0; i<wr->getChannelCount(); ++i){
-			sampleTransientValue[i]=0.0f;
+		if (wr->m_decompositionType != Film::ESteadyState) {
+			sampleDecompositionValue   = (Float *) alloca(sizeof(Float) * wr->getChannelCount());
+			l_sampleDecompositionValue = (Float *) alloca(sizeof(Float) * wr->getChannelCount());
+			temp = (Float *) alloca(sizeof(Float) * SPECTRUM_SAMPLES); // Assuming that SPECTRUM_SAMPLES = 3;
+
+			for (int i=0; i<wr->getChannelCount(); ++i){
+				sampleDecompositionValue[i]=0.0f;
+				l_sampleDecompositionValue[i]=0.0f;
+			}
+            l_sampleDecompositionValue[wr->getChannelCount() - 1]=1.0f;
+            l_sampleDecompositionValue[wr->getChannelCount() - 2]=1.0f;
 		}
-
 
 		for (int s = (int) emitterSubpath.vertexCount()-1; s >= 0; --s) {
 			/* Determine the range of sensor vertices to be traversed,
@@ -228,7 +291,10 @@ public:
 					value = radianceWeights[t] *
 						vs->eval(scene, vsPred, vt, EImportance) *
 						vt->eval(scene, vtPred, vs, ERadiance);
-					pathLength = sensorPathlength[t];
+
+					if (wr->m_decompositionType != Film::ESteadyState) {
+						pathLength = sensorPathlength[t];
+					}
 				} else if (vt->isSensorSupernode()) {
 					/* If possible, convert 'vs' into an sensor sample */
 					if (!vs->cast(scene, PathVertex::ESensorSample) || vs->isDegenerate())
@@ -241,7 +307,11 @@ public:
 					value = importanceWeights[s] *
 						vs->eval(scene, vsPred, vt, EImportance) *
 						vt->eval(scene, vtPred, vs, ERadiance);
-					pathLength = emitterPathlength[s];
+
+					if (wr->m_decompositionType != Film::ESteadyState) {
+						pathLength = emitterPathlength[s];
+					}
+
 				} else if (m_config.sampleDirect && ((t == 1 && s > 1) || (s == 1 && t > 1))) {
 					/* s==1/t==1 path: use a direct sampling strategy if requested */
 					if (s == 1) {
@@ -250,13 +320,22 @@ public:
 						/* Generate a position on an emitter using direct sampling */
 						value = radianceWeights[t] * vt->sampleDirect(scene, m_sampler,
 							&tempEndpoint, &tempEdge, &tempSample, EImportance);
-						pathLength = sensorPathlength[t];
 
-						if (value.isZero())
+						if (wr->m_decompositionType != Film::ESteadyState) {
+							pathLength = sensorPathlength[t];
+						}
+
+						if (value.isZero() || value.isNaN())
 							continue;
 						vs = &tempSample; vsPred = &tempEndpoint; vsEdge = &tempEdge;
 						value *= vt->eval(scene, vtPred, vs, ERadiance);
-						pathLength += distance(vs->getPosition(),vt->getPosition());
+
+						if (wr->m_decompositionType == Film::ETransient) {
+							pathLength += vt->refIndex * distance(vs->getPosition(),vt->getPosition()); // Note: If vs->refIndex != vt->refIndex, the connection will anyway fail.
+						} else if (wr->m_decompositionType == Film::EBounce) {
+							pathLength += 1.0f;
+						}
+
 						vt->measure = EArea;
 					} else {
 						if (vs->isDegenerate())
@@ -264,13 +343,22 @@ public:
 						/* Generate a position on the sensor using direct sampling */
 						value = importanceWeights[s] * vs->sampleDirect(scene, m_sampler,
 							&tempEndpoint, &tempEdge, &tempSample, ERadiance);
-						pathLength = emitterPathlength[s];
+
+						if (wr->m_decompositionType != Film::ESteadyState) {
+							pathLength = emitterPathlength[s];
+						}
 
 						if (value.isZero())
 							continue;
 						vt = &tempSample; vtPred = &tempEndpoint; vtEdge = &tempEdge;
 						value *= vs->eval(scene, vsPred, vt, EImportance);
-						pathLength += distance(vs->getPosition(),vt->getPosition());
+
+						if (wr->m_decompositionType == Film::ETransient && !wr->m_calibratedTransient) {
+							pathLength += vs->refIndex * distance(vs->getPosition(),vt->getPosition()); // Note: If vs->refIndex != vt->refIndex, the connection will anyway fail.
+						} else if (wr->m_decompositionType == Film::EBounce) {
+							pathLength += 1.0f;
+						}
+
 						vs->measure = EArea;
 					}
 
@@ -282,9 +370,16 @@ public:
 
 					value = importanceWeights[s] * radianceWeights[t] *
 						vs->eval(scene, vsPred, vt, EImportance) *
-						vt->eval(scene, vtPred, vs, ERadiance);
+						vt->eval(scene, vtPred, vs, ERadiance); // Adi: This is not accurate for hetref as the direction of vs to vt wont be straight
 
-					pathLength = emitterPathlength[s]+sensorPathlength[t]+distance(vs->getPosition(),vt->getPosition());
+					if (wr->m_decompositionType == Film::ETransient) {
+						if(! (t==1 && wr->m_calibratedTransient))
+							pathLength = emitterPathlength[s]+sensorPathlength[t]+vs->refIndex * distance(vs->getPosition(),vt->getPosition());
+						else
+							pathLength = emitterPathlength[s];
+					} else if (wr->m_decompositionType == Film::EBounce) {
+						pathLength = emitterPathlength[s]+sensorPathlength[t]+1.0f;
+					}
 
 					/* Temporarily force vertex measure to EArea. Needed to
 					   handle BSDFs with diffuse + specular components */
@@ -295,8 +390,13 @@ public:
 				   the creation of additional vertices (index-matched boundaries etc.) */
 				int interactions = remaining; // backup
 				if (value.isZero() || !connectionEdge.pathConnectAndCollapse(
-						scene, vsEdge, vs, vt, vtEdge, interactions))
+						scene, vsEdge, vs, vt, vtEdge, interactions, m_sampler))
 					continue;
+
+				if(vs->isMediumInteraction() && vs->getMediumSamplingRecord().medium->isheterogeneousrefractive()){
+					vs->getMediumSamplingRecord().drev = connectionEdge.drev;
+					pathLength += connectionEdge.opticalLength - vs->refIndex * distance(vs->getPosition(),vt->getPosition());
+				}
 
 				/* Account for the terms of the measurement contribution
 				   function that are coupled to the connection edge */
@@ -343,27 +443,47 @@ public:
 				#endif
 
 
-				// Update sampleTransientValue
-				size_t binIndex = floor((pathLength - wr->m_pathMin)/(wr->m_pathSample));
-				if(wr->m_transient && binIndex >= 0 && binIndex < wr->m_frames){
-					value.toSRGB(temp[0],temp[1],temp[2]);
-					sampleTransientValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0] * miWeight;
-					sampleTransientValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1] * miWeight;
-					sampleTransientValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2] * miWeight;
-				}
+	            if(wr->m_decompositionType == Film::ETransient && wr->getModulationType() != PathLengthSampler::ENone)
+	                miWeight *= wr->correlationFunction(pathLength);
+	            else{
+					// Update sampleTransientValue
+					size_t binIndex = floor((pathLength - wr->m_decompositionMinBound)/(wr->m_decompositionBinWidth));
+					if (!value.isZero() && (wr->m_decompositionType != Film::ESteadyState) && binIndex >= 0 && binIndex < wr->m_frames){
+	                    if(SPECTRUM_SAMPLES == 3)
+	                        value.toLinearRGB(temp[0],temp[1],temp[2]); // Verify what happens when SPECTRUM_SAMPLES ! = 3
+	                    else
+	                        SLog(EError, "cannot run transient renderer for spectrum values more than 3");
+	
+	                    if(t >= 2){
+						    sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0] * miWeight;
+						    sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1] * miWeight;
+						    sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2] * miWeight;
+	    				}else if(t == 1){
+	    					l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] += temp[0] * miWeight;
+	    					l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] += temp[1] * miWeight;
+	    					l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] += temp[2] * miWeight;
+	    					wr->putLightSample(samplePos, l_sampleDecompositionValue);
+	    					l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+0] = 0; 
+	    					l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+1] = 0;
+						    l_sampleDecompositionValue[binIndex*SPECTRUM_SAMPLES+2] = 0;
+					    }
+	                }
+	            }
 
-				if (t >= 2)
-					sampleValue += value * miWeight;
-				else
-					wr->putLightSample(samplePos, value * miWeight);
+				if(wr->m_decompositionType == Film::ESteadyState || (wr->m_decompositionType == Film::ETransient && wr->getModulationType() != PathLengthSampler::ENone)){
+					if (t >= 2)
+						sampleValue += value * miWeight;
+					else
+						wr->putLightSample(samplePos, value * miWeight);
+				}
 			}
 		}
-		if(!wr->m_transient)
+		if (wr->m_decompositionType == Film::ESteadyState ||  (wr->m_decompositionType == Film::ETransient && wr->getModulationType() != PathLengthSampler::ENone)) {
 			wr->putSample(initialSamplePos, sampleValue);
-		else{
-			sampleTransientValue[wr->getChannelCount()-2]=1.0f;
-			sampleTransientValue[wr->getChannelCount()-1]=1.0f;
-			wr->putSample(initialSamplePos, sampleTransientValue);
+		} else {
+			sampleDecompositionValue[wr->getChannelCount()-2]=1.0f;
+			sampleDecompositionValue[wr->getChannelCount()-1]=1.0f;
+			wr->putSample(initialSamplePos, sampleDecompositionValue);
 		}
 
 	}
@@ -405,9 +525,9 @@ void BDPTProcess::develop() {
 	const ImageBlock *lightImage = m_result->getLightImage();
 	m_film->setBitmap(m_result->getImageBlock()->getBitmap());
 
-	if(!m_config.m_transient)
-		m_film->addBitmap(lightImage->getBitmap(), 1.0f / m_config.sampleCount);
-	m_refreshTimer->reset();
+	m_film->addBitmap(lightImage->getBitmap(), 1.0f / m_config.sampleCount);
+
+    m_refreshTimer->reset();
 	m_queue->signalRefresh(m_parent);
 }
 

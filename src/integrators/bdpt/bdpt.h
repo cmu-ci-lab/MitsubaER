@@ -20,7 +20,8 @@
 #define __BDPT_H
 
 #include <mitsuba/mitsuba.h>
-
+#include <mitsuba/render/film.h>
+#include <mitsuba/render/pathlengthsampler.h>
 /**
  * When the following is set to "1", the Bidirectional Path Tracer
  * will generate a series of debugging images that split up the final
@@ -47,11 +48,18 @@ struct BDPTConfiguration {
 	size_t sampleCount;
 	Vector2i cropSize;
 	int rrDepth;
-	bool m_transient;
-	float m_pathMin;
-	float m_pathMax;
-	float m_pathSample;
+	Film::EDecompositionType m_decompositionType;
+	Float m_decompositionMinBound;
+	Float m_decompositionMaxBound;
+	Float m_decompositionBinWidth;
 	size_t m_frames;
+
+	ref<PathLengthSampler> pathLengthSampler;
+
+	bool m_calibratedTransient;
+	bool m_forceBounces;
+	unsigned int m_sBounces;
+	unsigned int m_tBounces;
 
 	inline BDPTConfiguration() { }
 
@@ -64,10 +72,21 @@ struct BDPTConfiguration {
 		sampleCount = stream->readSize();
 		cropSize = Vector2i(stream);
 		rrDepth = stream->readInt();
-		m_transient = stream->readBool();
-		m_pathMin   = stream->readFloat();
-		m_pathMax   = stream->readFloat();
-		m_pathSample   = stream->readFloat();
+		m_decompositionType = (Film::EDecompositionType) stream->readUInt();
+		m_decompositionMinBound   = stream->readFloat();
+		m_decompositionMaxBound   = stream->readFloat();
+		m_decompositionBinWidth   = stream->readFloat();
+		if (maxDepth!=-1 && m_decompositionType == Film::EBounce){
+			if (maxDepth > m_decompositionMaxBound)
+				maxDepth = m_decompositionMaxBound;
+			if (maxDepth < m_decompositionMinBound)
+				SLog(EError, "maxDepth of BDPT is less than the minimum bound; Rendering is futile");
+		}
+		m_frames = stream->readSize();
+
+		m_forceBounces = stream->readBool();
+		m_sBounces = stream->readUInt();
+		m_tBounces = stream->readUInt();
 	}
 
 	inline void serialize(Stream *stream) const {
@@ -79,13 +98,28 @@ struct BDPTConfiguration {
 		stream->writeSize(sampleCount);
 		cropSize.serialize(stream);
 		stream->writeInt(rrDepth);
-		stream->writeBool(m_transient);
-		stream->writeFloat(m_pathMin);
-		stream->writeFloat(m_pathMax);
-		stream->writeFloat(m_pathSample);
+		stream->writeUInt(m_decompositionType);
+		stream->writeFloat(m_decompositionMinBound);
+		stream->writeFloat(m_decompositionMaxBound);
+		stream->writeFloat(m_decompositionBinWidth);
+		stream->writeSize(m_frames);
+
+		stream->writeBool(m_forceBounces);
+		stream->writeUInt(m_sBounces);
+		stream->writeUInt(m_tBounces);
 	}
 
 	void dump() const {
+
+		std::string decompositionType;
+		if (m_decompositionType == Film::ESteadyState) {
+			decompositionType = "none";
+		} else if (m_decompositionType == Film::ETransient) {
+			decompositionType = "transient";
+		} else if (m_decompositionType == Film::EBounce) {
+			decompositionType = "bounce";
+		}
+
 		SLog(EDebug, "Bidirectional path tracer configuration:");
 		SLog(EDebug, "   Maximum path depth          : %i", maxDepth);
 		SLog(EDebug, "   Image size                  : %ix%i",
@@ -97,10 +131,15 @@ struct BDPTConfiguration {
 		SLog(EDebug, "   Russian roulette depth      : %i", rrDepth);
 		SLog(EDebug, "   Block size                  : %i", blockSize);
 		SLog(EDebug, "   Number of samples           : " SIZE_T_FMT, sampleCount);
-		SLog(EDebug, "   Is transient enabled		 : %s", m_transient ? "yes" : "no");
-		SLog(EDebug, "   minimum Path sampled		 : %f", m_pathMin);
-		SLog(EDebug, "   maximum Path sampled		 : %f", m_pathMax);
-		SLog(EDebug, "   Bin width of Path sample 	 : %f", m_pathSample);
+		SLog(EDebug, "   decomposition type 		 : %s", decompositionType.c_str());
+		SLog(EDebug, "   decomposition min bound	 : %f", m_decompositionMinBound);
+		SLog(EDebug, "   decomposition max bound	 : %f", m_decompositionMaxBound);
+		SLog(EDebug, "   decomposition bin width 	 : %f", m_decompositionBinWidth);
+		SLog(EDebug, "   number of frames	   	     : %i", m_frames);
+		SLog(EDebug, "   Force Bounces		 	 : %i", m_forceBounces);
+		SLog(EDebug, "   S Bounce number		 : %i", m_sBounces);
+		SLog(EDebug, "   T Bounce number		 : %i", m_tBounces);
+
 		#if BDPT_DEBUG == 1
 			SLog(EDebug, "   Show weighted contributions : %s", showWeighted ? "yes" : "no");
 		#endif

@@ -92,6 +92,16 @@ public:
 		m_dimension1DArray = m_dimension2DArray = 0;
 	}
 
+	/* Just return the next random Float value */
+	Float nextFloat() {
+		return m_random->nextFloat();
+	}
+
+	/* Just return the next random size_t value */
+	size_t nextSize(size_t n) {
+		return m_random->nextSize(n);
+	}
+
 	Float next1D() {
 		return m_random->nextFloat();
 	}

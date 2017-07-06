@@ -140,7 +140,12 @@ Spectrum PhotonMap::estimateRadiance(const Intersection &its,
 		Vector wi = its.toLocal(-photon.getDirection());
 
 		BSDFSamplingRecord bRec(its, wi, its.wi, EImportance);
-		result += photon.getPower() * bsdf->eval(bRec) * (sqrTerm*sqrTerm);
+
+		Spectrum value;
+		if(bsdf->isheterogeneousbsdf())
+			result += photon.getPower() * bsdf->eval(bRec, its.p) * (sqrTerm*sqrTerm);
+		else
+			result += photon.getPower() * bsdf->eval(bRec) * (sqrTerm*sqrTerm);
 	}
 
 	/* Based on the assumption that the surface is locally flat,
@@ -167,7 +172,11 @@ struct RawRadianceQuery {
 
 		BSDFSamplingRecord bRec(its, its.toLocal(wi), its.wi, EImportance);
 
-		Spectrum value = photon.getPower() * bsdf->eval(bRec);
+		Spectrum value;
+		if(bsdf->isheterogeneousbsdf())
+			value = photon.getPower() * bsdf->eval(bRec, its.p);
+		else
+			value = photon.getPower() * bsdf->eval(bRec);
 		if (value.isZero())
 			return;
 

@@ -3,4 +3,25 @@ Import('env', 'plugins')
 plugins += env.SharedLibrary('homogeneous', ['homogeneous.cpp'])
 plugins += env.SharedLibrary('heterogeneous', ['heterogeneous.cpp'])
 
+hetrifEnv = env.Clone()
+if hetrifEnv.has_key('FASTWINDINGINCLUDE'):
+	hetrifEnv.Append(CPPPATH=env['FASTWINDINGINCLUDE'])
+if hetrifEnv.has_key('FASTWINDINGLIBDIR'):
+	hetrifEnv.Append(LIBPATH=env['FASTWINDINGLIBDIR'])
+if hetrifEnv.has_key('FASTWINDINGLIB'):
+	hetrifEnv.Append(LIBS=env['FASTWINDINGLIB'])
+if hetrifEnv.has_key('FASTWINDINGFLAGS'):
+	hetrifEnv.Append(CPPFLAGS=env['FASTWINDINGFLAGS'])
+if hetrifEnv.has_key('CERESINCLUDE'):
+	hetrifEnv.Append(CPPPATH=env['CERESINCLUDE'])
+if hetrifEnv.has_key('CERESLIBDIR'):
+	hetrifEnv.Append(LIBPATH=env['CERESLIBDIR'])
+if hetrifEnv.has_key('CERESLIB'):
+	hetrifEnv.Append(LIBS=env['CERESLIB'])
+if hetrifEnv.has_key('CERESFLAGS'):
+	hetrifEnv.Append(CPPFLAGS=env['CERESFLAGS'])
+
+hetrifEnv['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = True
+plugins += hetrifEnv.SharedLibrary('heterogeneousrefractive', ['heterogeneousrefractive.cpp', '/home/apedired/Dropbox/AccoustoOptics+InvRendering/CodeEtc/thirdParty/fast-winding-number-soups/build/CMakeFiles/fastwinding.dir/WindingNumber/UT_SolidAngle.cpp.o', '/home/apedired/Dropbox/AccoustoOptics+InvRendering/CodeEtc/thirdParty/fast-winding-number-soups/build/CMakeFiles/fastwinding.dir/WindingNumber/UT_Array.cpp.o', '/home/apedired/Dropbox/AccoustoOptics+InvRendering/CodeEtc/thirdParty/fast-winding-number-soups/build/tbb/libtbb.so'])
+
 Export('plugins')

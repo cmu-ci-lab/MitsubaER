@@ -48,6 +48,7 @@ class Logger;
 template <int M, int N, typename T> struct Matrix;
 struct Matrix2x2;
 struct Matrix3x3;
+struct Matrix3x3d;
 struct Matrix4x4;
 class MemoryStream;
 class MemoryMappedFile;
@@ -169,6 +170,18 @@ class WorkProcessor;
 class WorkResult;
 class WorkUnit;
 class ZStream;
+
+#if defined(FLOATDEBUG)
+	typedef double FLOAT;
+	typedef Matrix3x3d Matrix3x3F;
+	typedef Vector3d VectorF;
+	typedef Point3d PointF;
+#else
+	typedef Float FLOAT;
+	typedef Matrix3x3 Matrix3x3F;
+	typedef Vector VectorF;
+	typedef Point PointF;
+#endif
 
 typedef AnimationTrack<Float> FloatTrack;
 typedef AnimationTrack<Quaternion> QuatTrack;

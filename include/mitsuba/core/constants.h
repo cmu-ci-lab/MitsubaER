@@ -66,6 +66,9 @@
 #define INV_FOURPI_FLT    0.07957747154594766788f
 #define SQRT_TWO_FLT      1.41421356237309504880f
 #define INV_SQRT_TWO_FLT  0.70710678118654752440f
+#define HALF_FLT          0.5f
+#define ONE_SIXTH_FLT     0.16666666666666666667f
+#define TWO_THIRD_FLT     0.66666666666666666667f
 
 #define M_E_DBL           2.71828182845904523536
 #define M_PI_DBL          3.14159265358979323846
@@ -74,6 +77,9 @@
 #define INV_FOURPI_DBL    0.07957747154594766788
 #define SQRT_TWO_DBL      1.41421356237309504880
 #define INV_SQRT_TWO_DBL  0.70710678118654752440
+#define HALF_DBL          0.5
+#define ONE_SIXTH_DBL     0.16666666666666666667
+#define TWO_THIRD_DBL     0.66666666666666666667
 
 #ifdef SINGLE_PRECISION
 #define M_E               M_E_FLT
@@ -85,6 +91,15 @@
 #define INV_SQRT_TWO      INV_SQRT_TWO_FLT
 #define ONE_MINUS_EPS     ONE_MINUS_EPS_FLT
 #define RCPOVERFLOW       RCPOVERFLOW_FLT
+	#ifdef FLOATDEBUG
+	#define VHALF             1.0/2.0
+	#define ONE_SIXTH         1.0/6.0
+	#define TWO_THIRD         2.0/3.0
+	#else
+	#define VHALF              HALF_FLT
+	#define ONE_SIXTH         ONE_SIXTH_FLT
+	#define TWO_THIRD         TWO_THIRD_FLT
+	#endif
 #else
 #define M_E               M_E_DBL
 #define M_PI              M_PI_DBL
@@ -95,5 +110,8 @@
 #define INV_SQRT_TWO      INV_SQRT_TWO_DBL
 #define ONE_MINUS_EPS     ONE_MINUS_EPS_DBL
 #define RCPOVERFLOW       RCPOVERFLOW_DBL
+#define VHALF              HALF_DBL
+#define ONE_SIXTH         ONE_SIXTH_DBL
+#define TWO_THIRD         TWO_THIRD_DBL
 #endif
 #endif /* __MITSUBA_CORE_CONSTANTS_H */

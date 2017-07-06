@@ -2,11 +2,16 @@ import SCons
 import sys
 import glob
 import os
+import multiprocessing
 
 resources = []
 plugins = []
 stubs = []
 winstubs = []
+
+num_cpu = int(os.environ.get('NUM_CPU', multiprocessing.cpu_count()))
+SetOption('num_jobs', num_cpu)
+print("running with -j", GetOption('num_jobs'))
 
 Export('SCons', 'sys', 'os', 'glob', 'resources',
 	'plugins', 'stubs', 'winstubs')
@@ -39,7 +44,7 @@ build('src/libhw/SConscript')
 # Bidirectional support library
 build('src/libbidir/SConscript')
 # Python binding library
-build('src/libpython/SConscript')
+#build('src/libpython/SConscript')
 
 # ===== Build the applications =====
 env = env.Clone()
@@ -51,7 +56,7 @@ mainEnv = build('src/mitsuba/SConscript')
 converter_objects = build('src/converter/SConscript', ['mainEnv'])
 
 # Build the Qt-based GUI binaries
-build('src/mtsgui/SConscript', ['mainEnv', 'converter_objects'], duplicate=True)
+#build('src/mtsgui/SConscript', ['mainEnv', 'converter_objects'], duplicate=True)
 
 env['SHLIBPREFIX']=''
 
@@ -82,7 +87,7 @@ build('src/medium/SConscript')
 # Volumetric data sources
 build('src/volume/SConscript')
 # Sub-surface integrators
-build('src/subsurface/SConscript')
+#build('src/subsurface/SConscript')
 # Texture types
 build('src/textures/SConscript')
 # Integrators

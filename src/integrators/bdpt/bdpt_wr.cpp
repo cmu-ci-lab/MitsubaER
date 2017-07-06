@@ -33,15 +33,23 @@ BDPTWorkResult::BDPTWorkResult(const BDPTConfiguration &conf,
 	if (blockSize == Vector2i(-1, -1))
 		blockSize = Vector2i(conf.blockSize, conf.blockSize);
 
-	m_pathMax = conf.m_pathMax;
-	m_pathMin = conf.m_pathMin;
-	m_pathSample = conf.m_pathSample;
-	m_transient = conf.m_transient;
+	m_decompositionMaxBound = conf.m_decompositionMaxBound;
+	m_decompositionMinBound = conf.m_decompositionMinBound;
+	m_decompositionBinWidth = conf.m_decompositionBinWidth;
+	m_decompositionType = conf.m_decompositionType;
 	m_frames = conf.m_frames;
 
-	if(!conf.m_transient){
+	pathLengthSampler = conf.pathLengthSampler;
+
+	m_calibratedTransient = conf.m_calibratedTransient;
+
+	m_forceBounces = conf.m_forceBounces;
+	m_sBounces = conf.m_sBounces;
+	m_tBounces = conf.m_tBounces;
+
+	if (m_frames == 1) {
 		m_block = new ImageBlock(Bitmap::ESpectrumAlphaWeight, blockSize, rfilter);
-	}else{
+	} else {
 		m_block = new ImageBlock(Bitmap::EMultiSpectrumAlphaWeight, blockSize,
 				rfilter, (int) (SPECTRUM_SAMPLES * m_frames + 2));
 	}
@@ -53,8 +61,14 @@ BDPTWorkResult::BDPTWorkResult(const BDPTConfiguration &conf,
 		/* Stores the 'light image' -- every worker requires a
 		   full-resolution version, since contributions of s==0
 		   and s==1 paths can affect any pixel of this bitmap */
-		m_lightImage = new ImageBlock(Bitmap::ESpectrum,
+
+		if (m_frames == 1) {
+			m_lightImage = new ImageBlock(Bitmap::ESpectrum,
 				conf.cropSize, rfilter);
+		} else {
+			m_lightImage = new ImageBlock(Bitmap::EMultiSpectrumAlphaWeight,
+							conf.cropSize, rfilter, (int) (SPECTRUM_SAMPLES * m_frames + 2));
+		}
 		m_lightImage->setSize(conf.cropSize);
 		m_lightImage->setOffset(Point2i(0, 0));
 	}
@@ -126,6 +140,16 @@ void BDPTWorkResult::load(Stream *stream) {
 	if (m_lightImage)
 		m_lightImage->load(stream);
 	m_block->load(stream);
+
+	m_decompositionType = (Film::EDecompositionType) stream->readUInt();
+	m_decompositionMinBound = stream->readFloat();
+	m_decompositionMaxBound = stream->readFloat();
+	m_decompositionBinWidth = stream->readFloat();
+	m_frames = stream->readSize();
+
+	m_forceBounces = stream->readBool();
+	m_sBounces = stream->readUInt();
+	m_tBounces = stream->readUInt();
 }
 
 void BDPTWorkResult::save(Stream *stream) const {
@@ -136,6 +160,16 @@ void BDPTWorkResult::save(Stream *stream) const {
 	if (m_lightImage.get())
 		m_lightImage->save(stream);
 	m_block->save(stream);
+
+	stream->writeUInt(m_decompositionType);
+	stream->writeFloat(m_decompositionMinBound);
+	stream->writeFloat(m_decompositionMaxBound);
+	stream->writeFloat(m_decompositionBinWidth);
+	stream->writeSize(m_frames);
+
+	stream->writeBool(m_forceBounces);
+	stream->writeUInt(m_sBounces);
+	stream->writeUInt(m_tBounces);
 }
 
 std::string BDPTWorkResult::toString() const {

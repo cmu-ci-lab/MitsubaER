@@ -39,6 +39,29 @@ public:
 		return m_aabb;
 	}
 
+	//The next nine are written for support to spline volume class
+	/// get the resolution of the spline volume
+	virtual bool insideVolumeLimits(const PointF &p) const;
+	virtual Vector3i getResolution() const;
+
+	virtual Float maxSDFError() const;
+
+	/// Look up a floating point value by position
+	virtual FLOAT value(const PointF &p) const;
+
+	/// Look up gradient by position
+	virtual VectorF gradient(const PointF &p) const;
+
+	/// Look up hessian by position
+	virtual Matrix3x3F hessian(const PointF &p) const;
+
+	/// Combinations for increase in the speed
+	virtual void valueAndGradient(const PointF &p, FLOAT &f, VectorF &v) const;
+	virtual void gradientAndHessian(const PointF &p, VectorF &v, Matrix3x3F &M) const;
+	virtual void valueGradientAndHessian(const PointF &p, FLOAT &f, VectorF &v, Matrix3x3F &M) const;
+
+	virtual bool isAcousticRIF() const;
+
 	/// Are float-valued lookups permitted?
 	virtual bool supportsFloatLookups() const;
 

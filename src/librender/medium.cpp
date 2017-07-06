@@ -87,5 +87,22 @@ std::string MediumSamplingRecord::toString() const {
 	return oss.str();
 }
 
+void Medium::eval(const Ray &ray,
+	MediumSamplingRecord &mRec) const{
+	Log(EError, "'%s': does not implement eval()!", getClass()->getName().c_str());
+	return;
+}
+
+void Medium::eval(const Ray &ray, const Point &vsp, const Point &vtp, const bool isSensorSample,
+	MediumSamplingRecord &mRec, Sampler *sampler) const{
+	Log(EError, "'%s': does not implement eval()!", getClass()->getName().c_str());
+	return;
+}
+
+Float Medium::getRIF(const Point &p) const{
+	Log(EError, "'%s': does not implement eval()!", getClass()->getName().c_str());
+	return (Float) 1.0;
+}
+
 MTS_IMPLEMENT_CLASS(Medium, true, NetworkedObject)
 MTS_NAMESPACE_END

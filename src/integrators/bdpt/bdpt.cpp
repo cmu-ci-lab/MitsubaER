@@ -201,15 +201,32 @@ public:
 			int sceneResID, int sensorResID, int samplerResID) {
 		ref<Scheduler> scheduler = Scheduler::getInstance();
 		ref<Sensor> sensor = scene->getSensor();
-		const Film *film = sensor->getFilm();
+		Film *film = sensor->getFilm();
 		size_t sampleCount = scene->getSampler()->getSampleCount();
 		size_t nCores = scheduler->getCoreCount();
 
-		m_config.m_transient 	= film->isTransient();
-		m_config.m_pathMin 	= film->getPathMin();
-		m_config.m_pathMax 	= film->getPathMax();
-		m_config.m_pathSample = film->getPathSample();
+		m_config.m_decompositionType 	    = film->getDecompositionType();
+		m_config.m_decompositionMinBound 	= film->getDecompositionMinBound();
+		m_config.m_decompositionMaxBound 	= film->getDecompositionMaxBound();
+		m_config.m_decompositionBinWidth    = film->getDecompositionBinWidth();
 		m_config.m_frames = film->getFrames();
+
+		m_config.m_calibratedTransient = film->isCalibratedTransient();
+
+		m_config.m_forceBounces = film->getForceBounces();
+		m_config.m_sBounces  	= film->getSBounces();
+		m_config.m_tBounces 	= film->getTBounces();
+
+		m_config.pathLengthSampler = film->getPathLengthSampler();
+
+
+		if (m_config.maxDepth!=-1 && m_config.m_decompositionType == Film::EBounce){
+			if (m_config.maxDepth > m_config.m_decompositionMaxBound)
+				m_config.maxDepth = m_config.m_decompositionMaxBound;
+			if (m_config.maxDepth < m_config.m_decompositionMinBound)
+				Log(EError, "maxDepth of BDPT is less than the minimum bound; Rendering is futile");
+		}
+
 
 		Log(EDebug, "Size of data structures: PathVertex=%i bytes, PathEdge=%i bytes",
 			(int) sizeof(PathVertex), (int) sizeof(PathEdge));

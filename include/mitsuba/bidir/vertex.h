@@ -199,6 +199,8 @@ struct MTS_EXPORT_BIDIR PathVertex {
 	/// \brief Termination weight due to russian roulette (used by BDPT)
 	Float rrWeight;
 
+	Float refIndex ; // Refractive index: Required for tracking optical length
+
 	/**
 	 * \brief Auxilary node-depependent data associated with each vertex
 	 *

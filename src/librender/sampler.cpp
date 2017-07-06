@@ -69,6 +69,22 @@ void Sampler::setSampleIndex(size_t sampleIndex) {
 	m_dimension1DArray = m_dimension2DArray = 0;
 }
 
+/* Just return the next random Float value */
+Float Sampler::nextFloat() {
+	SLog(EError, "nextFloat(): not implemented");
+	return 0.0;
+}
+
+/* Just return the next random size_t value */
+size_t Sampler::nextSize(size_t n) {
+	SLog(EError, "nextSize(): not implemented");
+	return 0;
+}
+
+template <typename Iterator> void Sampler::shuffle(Iterator it1, Iterator it2){
+	return;
+}
+
 void Sampler::request1DArray(size_t size) {
 	m_req1D.push_back(size);
 	m_sampleArrays1D.push_back(new Float[m_sampleCount * size]);

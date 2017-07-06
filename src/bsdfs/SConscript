@@ -3,12 +3,17 @@ Import('env', 'plugins')
 # Basic library of smooth and rough materials
 plugins += env.SharedLibrary('diffuse', ['diffuse.cpp'])
 plugins += env.SharedLibrary('dielectric', ['dielectric.cpp'])
+plugins += env.SharedLibrary('hdielectric', ['hdielectric.cpp'])
 plugins += env.SharedLibrary('conductor', ['conductor.cpp'])
 plugins += env.SharedLibrary('plastic', ['plastic.cpp'])
 plugins += env.SharedLibrary('roughdiffuse', ['roughdiffuse.cpp'])
 plugins += env.SharedLibrary('roughdielectric', ['roughdielectric.cpp'])
+plugins += env.SharedLibrary('hroughdielectric', ['hroughdielectric.cpp'])
 plugins += env.SharedLibrary('roughconductor', ['roughconductor.cpp'])
 plugins += env.SharedLibrary('roughplastic', ['roughplastic.cpp'])
+
+
+
 
 # Materials that act as modifiers
 plugins += env.SharedLibrary('twosided', ['twosided.cpp'])
@@ -32,6 +37,6 @@ plugins += env.SharedLibrary('thindielectric', ['thindielectric.cpp'])
 # pretty heavy stuff to compile. Go easy on the compiler flags:
 irawanEnv = env.Clone()
 irawanEnv.RelaxCompilerSettings()
-plugins += irawanEnv.SharedLibrary('irawan', ['irawan.cpp'])
+#plugins += irawanEnv.SharedLibrary('irawan', ['irawan.cpp'])
 
 Export('plugins')

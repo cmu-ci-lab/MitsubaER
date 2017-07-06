@@ -66,6 +66,8 @@ struct MTS_EXPORT_BIDIR PathEdge {
 	 */
 	Float length;
 
+	Float opticalLength;
+
 	/**
 	 * \brief Measurement contribution weight
 	 *
@@ -93,6 +95,8 @@ struct MTS_EXPORT_BIDIR PathEdge {
 	 * unit length or a discrete probability.
 	 */
 	Float pdf[ETransportModes];
+
+	Vector drev;
 
 	//! @}
 	/* ==================================================================== */
@@ -408,7 +412,7 @@ struct MTS_EXPORT_BIDIR PathEdge {
 	 */
 	bool pathConnectAndCollapse(const Scene *scene, const PathEdge *predEdge,
 		const PathVertex *vs, const PathVertex *vt,
-		const PathEdge *succEdge, int &interactions);
+		const PathEdge *succEdge, int &interactions, Sampler *sampler);
 
 	/// Create a deep copy of this edge
 	PathEdge *clone(MemoryPool &pool) const;

@@ -124,6 +124,25 @@ public:
 			return Point(x, y, z) / w;
 	}
 
+	inline Point3d operator()(const Point3d &p) const {
+		double x = m_transform.m[0][0] * p.x + m_transform.m[0][1] * p.y
+		        + m_transform.m[0][2] * p.z + m_transform.m[0][3];
+		double y = m_transform.m[1][0] * p.x + m_transform.m[1][1] * p.y
+		        + m_transform.m[1][2] * p.z + m_transform.m[1][3];
+		double z = m_transform.m[2][0] * p.x + m_transform.m[2][1] * p.y
+		        + m_transform.m[2][2] * p.z + m_transform.m[2][3];
+		double w = m_transform.m[3][0] * p.x + m_transform.m[3][1] * p.y
+		        + m_transform.m[3][2] * p.z + m_transform.m[3][3];
+#ifdef MTS_DEBUG
+		if (w == 0)
+			SLog(EWarn, "w==0 in Transform::operator(Point &)");
+#endif
+		if (w == 1.0f)
+			return Point3d(x, y, z);
+		else
+			return Point3d(x, y, z) / w;
+	}
+
 	/// Transform a point by an affine / non-projective matrix
 	inline Point transformAffine(const Point &p) const {
 		Float x = m_transform.m[0][0] * p.x + m_transform.m[0][1] * p.y
@@ -133,6 +152,17 @@ public:
 		Float z = m_transform.m[2][0] * p.x + m_transform.m[2][1] * p.y
 		        + m_transform.m[2][2] * p.z + m_transform.m[2][3];
 		return Point(x,y,z);
+	}
+
+	/// Transform a point by an affine / non-projective matrix
+	inline Point3d transformAffine(const Point3d &p) const {
+		double x = m_transform.m[0][0] * p.x + m_transform.m[0][1] * p.y
+		        + m_transform.m[0][2] * p.z + m_transform.m[0][3];
+		double y = m_transform.m[1][0] * p.x + m_transform.m[1][1] * p.y
+		        + m_transform.m[1][2] * p.z + m_transform.m[1][3];
+		double z = m_transform.m[2][0] * p.x + m_transform.m[2][1] * p.y
+		        + m_transform.m[2][2] * p.z + m_transform.m[2][3];
+		return Point3d(x,y,z);
 	}
 
 	/// Transform a point by a affine / non-projective matrix (no temporaries)

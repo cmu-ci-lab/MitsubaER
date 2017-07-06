@@ -53,11 +53,36 @@ Film::Film(const Properties &props)
 	   filters. */
 	m_highQualityEdges = props.getBoolean("highQualityEdges", false);
 
-	m_transient = props.getBoolean("transient",false);
-	m_pathMin = props.getFloat("pathMin", 0.0f);
-	m_pathMax = props.getFloat("pathMax", 0.0f);
-	m_pathSample = props.getFloat("pathSample", 1.0f);
-	m_frames = ceil((m_pathMax-m_pathMin)/m_pathSample);
+	std::string decompositionType = boost::to_lower_copy(
+					props.getString("decomposition", "none"));
+
+	if (decompositionType == "none") {
+		m_decompositionType = ESteadyState;
+	} else if (decompositionType == "transient") {
+		m_decompositionType = ETransient;
+	} else if (decompositionType == "bounce") {
+		m_decompositionType = EBounce;
+	} else {
+		Log(EError, "The \"decomposition\" parameter must be equal to"
+			"either \"none\", \"transient\", or \"bounce\"!");
+	}
+
+	m_decompositionMinBound = props.getFloat("minBound", 0.0f);
+	m_decompositionMaxBound = props.getFloat("maxBound", 0.0f);
+	m_decompositionBinWidth = props.getFloat("binWidth", 1.0f);
+	m_frames = ceil((m_decompositionMaxBound-m_decompositionMinBound)/m_decompositionBinWidth);
+
+	m_pathLengthSampler = new PathLengthSampler(props);
+	if( m_decompositionType == ESteadyState || (m_decompositionType == ETransient && m_pathLengthSampler->getModulationType()!= PathLengthSampler::ENone)){
+		m_frames = 1;
+	}
+
+	m_calibratedTransient = props.getBoolean("calibratedTransient", false);
+
+	m_forceBounces 	= props.getBoolean("forceBounce", false);
+	m_sBounces  	= props.getInteger("sBounce", 0);
+	m_tBounces 		= props.getInteger("tBounce", 0);
+
 }
 
 Film::Film(Stream *stream, InstanceManager *manager)
@@ -66,7 +91,16 @@ Film::Film(Stream *stream, InstanceManager *manager)
 	m_cropOffset = Point2i(stream);
 	m_cropSize = Vector2i(stream);
 	m_highQualityEdges = stream->readBool();
+	m_decompositionType = (EDecompositionType) stream->readUInt();
+	m_decompositionMinBound = stream->readFloat();
+	m_decompositionMaxBound = stream->readFloat();
+	m_decompositionBinWidth = stream->readFloat();
+	m_frames = stream->readSize();
+	m_forceBounces = stream->readBool();
+	m_sBounces = stream->readUInt();
+	m_tBounces = stream->readUInt();
 	m_filter = static_cast<ReconstructionFilter *>(manager->getInstance(stream));
+	m_pathLengthSampler = static_cast<PathLengthSampler *>(manager->getInstance(stream));
 }
 
 Film::~Film() { }
@@ -77,7 +111,16 @@ void Film::serialize(Stream *stream, InstanceManager *manager) const {
 	m_cropOffset.serialize(stream);
 	m_cropSize.serialize(stream);
 	stream->writeBool(m_highQualityEdges);
+	stream->writeUInt(m_decompositionType);
+	stream->writeFloat(m_decompositionMinBound);
+	stream->writeFloat(m_decompositionMaxBound);
+	stream->writeFloat(m_decompositionBinWidth);
+	stream->writeSize(m_frames);
+	stream->writeBool(m_forceBounces);
+	stream->writeUInt(m_sBounces);
+	stream->writeUInt(m_tBounces);
 	manager->serialize(stream, m_filter.get());
+	manager->serialize(stream, m_pathLengthSampler.get());
 }
 
 void Film::addChild(const std::string &name, ConfigurableObject *child) {
@@ -86,7 +129,10 @@ void Film::addChild(const std::string &name, ConfigurableObject *child) {
 	if (cClass->derivesFrom(MTS_CLASS(ReconstructionFilter))) {
 		Assert(m_filter == NULL);
 		m_filter = static_cast<ReconstructionFilter *>(child);
-	} else {
+	} else if (cClass->derivesFrom(MTS_CLASS(PathLengthSampler))) {
+		Assert(m_pathLengthSampler == NULL);
+		m_pathLengthSampler = static_cast<PathLengthSampler *>(child);
+	}else {
 		Log(EError, "Film: Invalid child node! (\"%s\")",
 			cClass->getName().c_str());
 	}

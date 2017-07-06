@@ -248,8 +248,8 @@ public:
 
 		const ref_vector<Medium> &media = scene->getMedia();
 		for (ref_vector<Medium>::const_iterator it = media.begin(); it != media.end(); ++it) {
-			if (!(*it)->isHomogeneous())
-				Log(EError, "Inhomogeneous media are currently not supported by the photon mapper!");
+			if (!(*it)->isHomogeneous() && !(*it)->isheterogeneousrefractive())
+				Log(EError, "Inhomogeneous media and non-heterogeneousrefractive are currently not supported by the photon mapper!");
 		}
 
 		if (m_globalPhotonMap.get() == NULL && m_globalPhotons > 0) {
@@ -470,7 +470,11 @@ public:
 				/* Sample the BSDF and recurse */
 				BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
 				bRec.component = i;
-				Spectrum bsdfVal = bsdf->sample(bRec, Point2(0.5f));
+				Spectrum bsdfVal;
+				if(!bsdf->isheterogeneousbsdf())
+					bsdfVal = bsdf->sample(bRec, Point2(0.5f));
+				else
+					bsdfVal = bsdf->sample(bRec, its.p, Point2(0.5f));
 				if (bsdfVal.isZero())
 					continue;
 
@@ -588,7 +592,11 @@ public:
 					bRec.typeMask = BSDF::ESmooth;
 
 				Float bsdfPdf;
-				Spectrum bsdfVal = bsdf->sample(bRec, bsdfPdf, sampleArray[i]);
+				Spectrum bsdfVal;
+				if(bsdf->isheterogeneousbsdf())
+					bsdfVal = bsdf->sample(bRec, bsdfPdf, its.p, sampleArray[i]);
+				else
+					bsdfVal = bsdf->sample(bRec, bsdfPdf, sampleArray[i]);
 				if (bsdfVal.isZero())
 					continue;
 

@@ -37,6 +37,8 @@ public:
 	/// Traveled distance
 	Float t;
 
+	Float opticalLength;
+
 	/// Location of the scattering interaction
 	Point p;
 
@@ -87,6 +89,14 @@ public:
 	/// Pointer to the associated medium
 	const Medium *medium;
 
+	/// For heterogeneous refractive medium
+	Vector d;    // direction of the succ. vector.
+	Vector drev; // incase of direct connection. This stores the direction of the ray from the point being connected to this point.
+
+	/// For heterogeneous refractive medium: Pretty bad variables here. These are here for passing edge data
+	Float refRatioSq;
+	Float distance;
+
 public:
 	inline MediumSamplingRecord() : medium(NULL) { }
 
@@ -132,7 +142,10 @@ public:
 	 * supplied ray segment within \a mRec.
 	 */
 	virtual void eval(const Ray &ray,
-		MediumSamplingRecord &mRec) const = 0;
+		MediumSamplingRecord &mRec) const;
+
+	virtual void eval(const Ray &ray, const Point &vsp, const Point &vtp, const bool isSensorSample,
+		MediumSamplingRecord &mRec, Sampler *sampler) const;
 
 	//! @}
 	// =============================================================
@@ -153,6 +166,13 @@ public:
 
 	/// Return the phase function of this medium
 	inline const PhaseFunction *getPhaseFunction() const { return m_phaseFunction.get(); }
+
+	/// Determine whether the medium is heterogeneousrefractive
+	virtual bool isheterogeneousrefractive() const {return false;};
+	virtual bool makeSensorDirectConnections() const {return false;};
+
+	// For heterogeneousrefractive which required shape as well
+	virtual void buildShape() {Log(EError, "'%s': does not implement buildShape()!", getClass()->getName().c_str());};
 
 	/// Determine whether the medium is homogeneous
 	virtual bool isHomogeneous() const = 0;
@@ -188,6 +208,9 @@ public:
 	/// Return a string representation
 	virtual std::string toString() const = 0;
 
+	virtual Float getRIF(const Point &p) const;
+
+
 	//! @}
 	// =============================================================
 
@@ -206,6 +229,8 @@ protected:
 	Spectrum m_sigmaA;
 	Spectrum m_sigmaS;
 	Spectrum m_sigmaT;
+public: //Adithya: Hack so that heterogeneousrefractive has access to the parent's shape
+	ref<Shape> m_shape;
 };
 
 MTS_NAMESPACE_END

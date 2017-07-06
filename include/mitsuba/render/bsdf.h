@@ -367,6 +367,7 @@ public:
 	 *
 	 */
 	virtual Spectrum sample(BSDFSamplingRecord &bRec, const Point2 &sample) const = 0;
+	virtual Spectrum sample(BSDFSamplingRecord &bRec, const Point &p, const Point2 &sample) const; // for heterogeneousRIF
 
 	/**
 	 * \brief Sample the BSDF and return the probability density \a and the
@@ -396,6 +397,8 @@ public:
 	 */
 	virtual Spectrum sample(BSDFSamplingRecord &bRec, Float &pdf,
 		const Point2 &sample) const = 0;
+	virtual Spectrum sample(BSDFSamplingRecord &bRec, Float &pdf, const Point &p,
+		const Point2 &sample) const; // for heterogeneousRIF
 
 	/**
 	 * \brief Evaluate the BSDF f(wi, wo) or its adjoint version f^{*}(wi, wo)
@@ -416,6 +419,8 @@ public:
 	 */
 	virtual Spectrum eval(const BSDFSamplingRecord &bRec,
 		EMeasure measure = ESolidAngle) const = 0;
+	virtual Spectrum eval(const BSDFSamplingRecord &bRec, const Point &p,
+		EMeasure measure = ESolidAngle) const; // for heterogeneousRIF
 
 	/**
 	 * \brief Compute the probability of sampling \c bRec.wo (given
@@ -439,6 +444,13 @@ public:
 	 */
 	virtual Float pdf(const BSDFSamplingRecord &bRec,
 		EMeasure measure = ESolidAngle) const = 0;
+	virtual Float pdf(const BSDFSamplingRecord &bRec, const Point &p,
+		EMeasure measure = ESolidAngle) const;// for heterogeneousRIF
+
+	virtual bool isheterogeneousbsdf() const {return false;}
+	virtual bool ishdielectric() const {return false;}
+	virtual bool ishroughdielectric() const {return false;}
+
 
 	/**
 	 * \brief For transmissive BSDFs: return the material's
@@ -540,6 +552,8 @@ protected:
 	unsigned int m_combinedType;
 	bool m_usesRayDifferentials;
 	bool m_ensureEnergyConservation;
+public: //Adithya: Hack so that in case of heterogeneousrif, we can have access to the RIF in the heterogeneousrefractive
+	ref<Shape> m_shape;
 };
 
 MTS_NAMESPACE_END

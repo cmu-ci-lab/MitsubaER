@@ -39,6 +39,51 @@ void VolumeDataSource::serialize(Stream *stream, InstanceManager *manager) const
 	m_aabb.serialize(stream);
 }
 
+bool VolumeDataSource::insideVolumeLimits(const PointF &p) const{
+	Log(EError, "'%s': does not implement insideVolumeLimits()!", getClass()->getName().c_str());
+	return false;
+}
+
+Vector3i VolumeDataSource::getResolution() const{
+	Log(EError, "'%s': does not implement getResolution()!", getClass()->getName().c_str());
+	return Vector3i(0);
+}
+
+Float VolumeDataSource::maxSDFError() const{
+	Log(EError, "'%s': does not implement maxSDFError()!", getClass()->getName().c_str());
+	return Float(0);
+}
+
+FLOAT VolumeDataSource::value(const PointF &p) const{
+	Log(EError, "'%s': does not implement value()!", getClass()->getName().c_str());
+	return 0.0;
+}
+
+VectorF VolumeDataSource::gradient(const PointF &p) const{
+	Log(EError, "'%s': does not implement gradient()!", getClass()->getName().c_str());
+	return VectorF(0.0);
+}
+
+Matrix3x3F VolumeDataSource::hessian(const PointF &p) const{
+	Log(EError, "'%s': does not implement hessian()!", getClass()->getName().c_str());
+	return Matrix3x3F(0.0);
+}
+
+void VolumeDataSource::valueAndGradient(const PointF &p, FLOAT &f, VectorF &v) const{
+	Log(EError, "'%s': does not implement valueAndGradient()!", getClass()->getName().c_str());
+}
+void VolumeDataSource::gradientAndHessian(const PointF &p, VectorF &v, Matrix3x3F &M) const{
+	Log(EError, "'%s': does not implement gradientAndHessian()!", getClass()->getName().c_str());
+}
+void VolumeDataSource::valueGradientAndHessian(const PointF &p, FLOAT &f, VectorF &v, Matrix3x3F &M) const{
+	Log(EError, "'%s': does not implement valueGradientAndHessian()!", getClass()->getName().c_str());
+}
+
+bool VolumeDataSource::isAcousticRIF() const{
+	Log(EError, "'%s': does not implement isAcousticRIF()!", getClass()->getName().c_str());
+	return false;
+}
+
 Float VolumeDataSource::lookupFloat(const Point &p) const {
 	Log(EError, "'%s': does not implement lookupFloat()!", getClass()->getName().c_str());
 	return 0;

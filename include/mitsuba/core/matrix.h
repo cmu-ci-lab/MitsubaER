@@ -553,6 +553,141 @@ public:
 	}
 };
 
+
+
+
+/**
+ * \brief Basic 3x3 matrix data type
+ * \ingroup libcore
+ */
+struct MTS_EXPORT_CORE Matrix3x3d : public Matrix<3, 3, double> {
+public:
+	inline Matrix3x3d() { }
+
+	/// Initialize the matrix with constant entries
+	explicit inline Matrix3x3d(double value) : Matrix<3, 3, double>(value) { }
+
+	/// Initialize the matrix from a given 3x3 array
+	explicit inline Matrix3x3d(const double _m[3][3]) : Matrix<3, 3, double>(_m) { }
+
+	/// Initialize the matrix from a given (float) 3x3 array in row-major order
+	explicit inline Matrix3x3d(const double _m[9]) : Matrix<3, 3, double>(_m) { }
+
+	/// Initialize the matrix from three 3D column vectors
+	explicit inline Matrix3x3d(const Vector3d &v1, const Vector3d &v2, const Vector3d &v3) {
+		m[0][0] = v1.x; m[0][1] = v2.x; m[0][2] = v3.x;
+		m[1][0] = v1.y; m[1][1] = v2.y; m[1][2] = v3.y;
+		m[2][0] = v1.z; m[2][1] = v2.z; m[2][2] = v3.z;
+	}
+
+    /// Initialize the matrix as outer product of 2 vectors
+    explicit inline Matrix3x3d(const Vector3d &v1, const Vector3d &v2) {
+        m[0][0] = v1.x * v2.x; m[0][1] = v1.x * v2.y; m[0][2] = v1.x * v2.z;
+        m[1][0] = v1.y * v2.x; m[1][1] = v1.y * v2.y; m[1][2] = v1.y * v2.z;
+        m[2][0] = v1.z * v2.x; m[2][1] = v1.z * v2.y; m[2][2] = v1.z * v2.z;
+    }
+
+	/// Unserialize a matrix from a stream
+	explicit inline Matrix3x3d(Stream *stream) : Matrix<3, 3, double>(stream) { }
+
+	/// Assignment operator
+	explicit inline Matrix3x3d(const Matrix<3, 3, Float> &mat) {
+		for (int i=0; i<3; ++i)
+			for (int j=0; j<3; ++j)
+				m[i][j] = double(mat.m[i][j]);
+	}
+
+	/// Copy constructor
+	inline Matrix3x3d(const Matrix<3, 3, double> &mtx) : Matrix<3, 3, double>(mtx) { }
+
+	/// Initialize with the given values
+	inline Matrix3x3d(double a00, double a01, double a02,
+			double a10, double a11, double a12,
+			double a20, double a21, double a22) {
+		m[0][0] = a00; m[0][1] = a01; m[0][2] = a02;
+		m[1][0] = a10; m[1][1] = a11; m[1][2] = a12;
+		m[2][0] = a20; m[2][1] = a21; m[2][2] = a22;
+	}
+
+	/// inplace transpose
+	inline void transpose(){
+		for(int i=0; i<3; i++){
+			for(int j=0; j<i; j++){
+				double temp = m[i][j];
+				m[i][j] = m[j][i];
+				m[j][i] = temp;
+			}
+		}
+
+	}
+
+	/// Return the determinant (Faster than Matrix::det())
+	inline double det() const {
+		return ((m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]))
+			  - (m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]))
+			  + (m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])));
+	}
+
+	/// Matrix-vector multiplication
+	inline Vector3d operator*(const Vector3d &v) const {
+		return Vector3d(
+			m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
+			m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
+			m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z);
+	}
+
+	/// multiply the matrix by transpose of v, returns the transpose of the line vector.
+	inline Vector3d preMult(const Vector3d &v) const {
+		return Vector3d(v.x * m[0][0] + v.y * m[1][0] + v.z * m[2][0],
+					  v.x * m[0][1] + v.y * m[1][1] + v.z * m[2][1],
+					  v.x * m[0][2] + v.y * m[1][2] + v.z * m[2][2]);
+	}
+
+	/// Scalar multiplication (creates a temporary)
+	inline Matrix3x3d operator*(double value) const {
+		Matrix3x3d result;
+		for (int i=0; i<3; ++i)
+			for (int j=0; j<3; ++j)
+				result.m[i][j] = m[i][j]*value;
+		return result;
+	}
+
+
+	/// Assignment operator
+	inline Matrix3x3d &operator=(const Matrix<3, 3, Float> &mat) {
+		for (int i=0; i<3; ++i)
+			for (int j=0; j<3; ++j)
+				m[i][j] = double(mat.m[i][j]);
+		return *this;
+	}
+
+	/// Assignment operator
+	inline Matrix3x3d &operator=(const Matrix<3, 3, double> &mat) {
+		for (int i=0; i<3; ++i)
+			for (int j=0; j<3; ++j)
+				m[i][j] = mat.m[i][j];
+		return *this;
+	}
+
+	/// Return a row by index
+	inline Vector3d row(int i) const {
+		return Vector3d(
+			m[i][0], m[i][1], m[i][2]
+		);
+	}
+
+	/// Return a column by index
+	inline Vector3d col(int i) const {
+		return Vector3d(
+			m[0][i], m[1][i], m[2][i]
+		);
+	}
+};
+
+
+
+
+
 /**
  * \brief Basic 3x3 matrix data type
  * \ingroup libcore
@@ -577,6 +712,13 @@ public:
 		m[2][0] = v1.z; m[2][1] = v2.z; m[2][2] = v3.z;
 	}
 
+    /// Initialize the matrix as outer product of 2 vectors
+    explicit inline Matrix3x3(const Vector &v1, const Vector &v2) {
+        m[0][0] = v1.x * v2.x; m[0][1] = v1.x * v2.y; m[0][2] = v1.x * v2.z;
+        m[1][0] = v1.y * v2.x; m[1][1] = v1.y * v2.y; m[1][2] = v1.y * v2.z;
+        m[2][0] = v1.z * v2.x; m[2][1] = v1.z * v2.y; m[2][2] = v1.z * v2.z;
+    }
+
 	/// Unserialize a matrix from a stream
 	explicit inline Matrix3x3(Stream *stream) : Matrix<3, 3, Float>(stream) { }
 
@@ -590,6 +732,18 @@ public:
 		m[0][0] = a00; m[0][1] = a01; m[0][2] = a02;
 		m[1][0] = a10; m[1][1] = a11; m[1][2] = a12;
 		m[2][0] = a20; m[2][1] = a21; m[2][2] = a22;
+	}
+
+	/// inplace transpose
+	inline void transpose(){
+		for(int i=0; i<3; i++){
+			for(int j=0; j<i; j++){
+				double temp = m[i][j];
+				m[i][j] = m[j][i];
+				m[j][i] = temp;
+			}
+		}
+
 	}
 
 	/// Return the determinant (Faster than Matrix::det())
@@ -689,6 +843,13 @@ struct MTS_EXPORT_CORE Matrix4x4 : public Matrix<4, 4, Float> {
 		m[1][0] = a10; m[1][1] = a11; m[1][2] = a12; m[1][3] = a13;
 		m[2][0] = a20; m[2][1] = a21; m[2][2] = a22; m[2][3] = a23;
 		m[3][0] = a30; m[3][1] = a31; m[3][2] = a32; m[3][3] = a33;
+	}
+
+	/// get the 3x3 sub-matrix
+	inline Matrix3x3 rot3x3() const {
+		return Matrix3x3(m[0][0], m[0][1], m[0][2],
+						 m[1][0], m[1][1], m[1][2],
+						 m[2][0], m[2][1], m[2][2]);
 	}
 
 	/// Return the determinant of the upper left 3x3 sub-matrix

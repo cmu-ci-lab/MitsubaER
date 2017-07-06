@@ -34,12 +34,39 @@ bool PathEdge::sampleNext(const Scene *scene, Sampler *sampler,
 	/* Sample the RTE in-scattering integral -- this determines whether the
 	   next vertex is invalid or a surface or medium scattering event */
 	MediumSamplingRecord mRec;
+	mRec.opticalLength = 0.0;
 	if (medium && medium->sampleDistance(Ray(ray, 0, its.t), mRec, sampler)) {
 		succ->type = PathVertex::EMediumInteraction;
 		succ->degenerate = false;
 		succ->getMediumSamplingRecord() = mRec;
 		length = mRec.t;
+		opticalLength = mRec.opticalLength;
 	} else if (surface) {
+		if(medium && medium->isheterogeneousrefractive()){
+//			its has to be properly updated here. Cannot be based on straight line. Make sure that the point mrec.p is definitely inside the medium.
+			Intersection its1;
+
+			// The below code assumes that that the ray spends decent amount of length inside the heterogeneous volume. This algorithm fails at corners and edges of the scene. However, it is same problem for normal ray tracing as well.
+			Vector d = normalize(mRec.d);
+			Float dist = Epsilon*(std::max(std::max(std::max(std::abs(mRec.p.x),
+				std::abs(mRec.p.y)), std::abs(mRec.p.z)), Epsilon)) + Epsilon;
+
+			Ray hackRay(mRec.p - dist*d, d, 0);
+
+			if(scene->rayIntersectAll(hackRay, its1) && (ray.o-its1.p).lengthSquared() > Epsilon){
+				its1.t = mRec.t;
+				opticalLength = mRec.opticalLength;
+				its = its1;
+			}else{
+//				if((ray.o-its1.p).lengthSquared() > Epsilon){
+//					std::cout << std::endl << "missing intersection: Investigate me. Point:" << mRec.p.toString() << "length: " << (mRec.p - Point(-200, 0, 350)).length() << std::endl;
+//					std::cout << "After correction. Point:" << hackRay.o.toString() << " direction:" << d.toString() << "length: " << (hackRay.o - Point(-200, 0, 350)).length() << std::endl;
+//					std::cout << "Original ray was: " << ray.o.toString() << " direction:" << ray.d.toString() << std::endl;
+//					std::cout << "final intersection point" << its1.p.toString() << std::endl;
+//					std::cout << "Difference: " << (ray.o-its1.p).lengthSquared() <<std::endl;
+//				}
+			}
+		}
 		succ->type = PathVertex::ESurfaceInteraction;
 		succ->degenerate = !(its.getBSDF()->hasComponent(BSDF::ESmooth) ||
 				its.shape->isEmitter() || its.shape->isSensor());
@@ -61,7 +88,11 @@ bool PathEdge::sampleNext(const Scene *scene, Sampler *sampler,
 		pdf[1-mode] = pred->isMediumInteraction() ? mRec.pdfSuccessRev : mRec.pdfFailure;
 		weight[mode]   = mRec.transmittance / pdf[mode];
 		weight[1-mode] = mRec.transmittance / pdf[1-mode];
+		if(medium->isheterogeneousrefractive()){
+			weight[ERadiance] *= mRec.refRatioSq;
+		}
 	}
+
 	d = ray.d;
 	/* Direction always points along the light path (from the light source along the path) */
 	if(mode == ERadiance)
@@ -441,7 +472,7 @@ bool PathEdge::pathConnect(const Scene *scene, const PathEdge *predEdge,
 
 bool PathEdge::pathConnectAndCollapse(const Scene *scene, const PathEdge *predEdge,
 		const PathVertex *vs, const PathVertex *vt,
-		const PathEdge *succEdge, int &interactions) {
+		const PathEdge *succEdge, int &interactions, Sampler *sampler) {
 	if (vs->isEmitterSupernode() || vt->isSensorSupernode()) {
 		Float radianceTransport   = vt->isSensorSupernode() ? 1.0f : 0.0f,
 		      importanceTransport = 1-radianceTransport;
@@ -480,21 +511,65 @@ bool PathEdge::pathConnectAndCollapse(const Scene *scene, const PathEdge *predEd
 		Intersection its;
 		Float remaining = length;
 		medium = vt->getTargetMedium(succEdge, d);
+		//ADI: THIS IS BAD !! We should have started from vs for heterogeneous, but this info is also hidden and not in the vs. Cheat later and change the medium.
 
 		while (true) {
 			bool surface = scene->rayIntersectAll(ray, its);
 
-			if (surface && (interactions == maxInteractions ||
-				!(its.getBSDF()->getType() & BSDF::ENull))) {
+			//Original
+//			if (surface && (interactions == maxInteractions ||
+//					!(its.getBSDF()->getType() & BSDF::ENull))) {
+//				/* Encountered an occluder -- zero transmittance. */
+//				return false;
+//			}
+
+			//Working case
+//			if (surface && ((vs->isMediumInteraction() && vs->getMediumSamplingRecord().medium!=NULL && vs->getMediumSamplingRecord().medium->m_shape!=NULL && vs->getMediumSamplingRecord().medium->m_shape->getBSDF()->ishdielectric() && vt->getType()!= PathVertex::ESensorSample) ||
+//					interactions == maxInteractions ||
+//				!((vs->isMediumInteraction() && vs->getMediumSamplingRecord().medium!=NULL && vs->getMediumSamplingRecord().medium->m_shape!=NULL && vs->getMediumSamplingRecord().medium->m_shape->getBSDF()->ishdielectric()) || (its.getBSDF()->getType() & BSDF::ENull)))) { // Don't do BSDF check for heterogeneous refractive. FIXME: Make this logic simpler
+//				/* Encountered an occluder -- zero transmittance. */
+//				return false;
+//			}
+
+			//Simplified and with makeSensorDirectConnections flag
+			bool ishdielectric = vs->isMediumInteraction() && vs->getMediumSamplingRecord().medium!=NULL && vs->getMediumSamplingRecord().medium->makeSensorDirectConnections() && vs->getMediumSamplingRecord().medium->m_shape!=NULL && vs->getMediumSamplingRecord().medium->m_shape->getBSDF()->ishdielectric();
+
+			if (surface && ((ishdielectric && vt->getType()!= PathVertex::ESensorSample) ||
+					interactions == maxInteractions ||
+				!(ishdielectric || (its.getBSDF()->getType() & BSDF::ENull)))) { // Don't do BSDF check for heterogeneous refractive. FIXME: Make this logic simpler
 				/* Encountered an occluder -- zero transmittance. */
 				return false;
+			}
+
+			bool hetBidir = false;
+//			const Medium* tempMedium =vs->getTargetMedium(succEdge, Vector(0.0f)-d);
+			const Medium* tempMedium =vs->getTargetMedium(predEdge, Vector(0.0f)-d);
+
+			if(tempMedium!=NULL && tempMedium->m_shape!=NULL && tempMedium->m_shape->getBSDF()->isheterogeneousbsdf()){
+				medium = tempMedium;
+				hetBidir = true;
 			}
 
 			if (medium) {
 				Float segmentLength = std::min(its.t, remaining);
 				MediumSamplingRecord mRec;
-				medium->eval(Ray(ray, 0, segmentLength), mRec);
-
+				if(medium->isheterogeneousrefractive()){
+					if(!hetBidir)
+						return false;
+					//Verify this for sensor direct connections: if(!(vs->isMediumInteraction() && vs->getMediumSamplingRecord().medium!=NULL && vs->getMediumSamplingRecord().medium->makeSensorDirectConnections()) && vt->getTargetMedium(succEdge, d) != medium)
+					if(vt->getTargetMedium(succEdge, d) != medium)
+						return false;
+					medium->eval(Ray(ray, 0, segmentLength), vsp, vtp, vt->getType() == PathVertex::ESensorSample, mRec, sampler);
+					length = mRec.distance;
+					opticalLength = mRec.opticalLength;
+					drev = mRec.drev;
+					if(std::isinf(length))
+						return false;
+//					if( (segmentLength-remaining) > Epsilon) // Why did I add this code?
+//						SLog(EError, "For heterogeneous refractive, trying to connect between outside and inside the medium");
+				}
+				else
+					medium->eval(Ray(ray, 0, segmentLength), mRec);
 				Float pdfRadiance = (surface || !vs->isMediumInteraction())
 					? mRec.pdfFailure : mRec.pdfSuccess;
 				Float pdfImportance = (interactions > 0 || !vt->isMediumInteraction())
@@ -511,6 +586,10 @@ bool PathEdge::pathConnectAndCollapse(const Scene *scene, const PathEdge *predEd
 				pdf[ERadiance] *= pdfRadiance;
 			}
 
+			//For heterogeneous refractive, do this only once
+			if(its.shape && its.shape->getInteriorMedium() && its.shape->getInteriorMedium()->isheterogeneousrefractive()){
+				return true;
+			}
 			if (!surface || remaining - its.t < 0)
 				break;
 

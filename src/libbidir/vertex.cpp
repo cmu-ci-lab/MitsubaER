@@ -42,6 +42,7 @@ bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 	memset(succ, 0, sizeof(PathVertex));
 
 	succEdge->medium = (predEdge == NULL) ? NULL : predEdge->medium;
+	refIndex = 1.0f;
 	rrWeight = 1.0f;
 
 	switch (type) {
@@ -149,13 +150,22 @@ bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 		case ESurfaceInteraction: {
 				const Intersection &its = getIntersection();
 				const BSDF *bsdf = its.getBSDF();
+				refIndex = pred->refIndex;
 				Vector wi = normalize(pred->getPosition() - its.p);
 				Vector wo;
-
+				bool heterogeneousrefractive = false;
+				if(its.shape->getInteriorMedium() && its.shape->getInteriorMedium()->isheterogeneousrefractive())
+					heterogeneousrefractive = true;
 				/* Sample the BSDF */
 				BSDFSamplingRecord bRec(its, sampler, mode);
 				bRec.wi = its.toLocal(wi);
-				weight[mode] = bsdf->sample(bRec, pdf[mode], sampler->next2D());
+				if(!heterogeneousrefractive)
+					weight[mode] = bsdf->sample(bRec, pdf[mode], sampler->next2D());
+				else
+					weight[mode] = bsdf->sample(bRec, pdf[mode], its.p, sampler->next2D());
+
+				refIndex *= bRec.eta;
+
 				if (weight[mode].isZero())
 					return false;
 
@@ -191,7 +201,10 @@ bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 
 				/* Compute the reverse quantities */
 				bRec.reverse();
-				pdf[1-mode] = bsdf->pdf(bRec, (EMeasure) measure);
+				if(!heterogeneousrefractive)
+					pdf[1-mode] = bsdf->pdf(bRec, (EMeasure) measure);
+				else
+					pdf[1-mode] = bsdf->pdf(bRec, its.p, (EMeasure) measure);
 				if (pdf[1-mode] <= RCPOVERFLOW) {
 					/* This can happen rarely due to roundoff errors -- be strict */
 					return false;
@@ -205,7 +218,10 @@ bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 						weight[1-mode] *=
 							std::abs(Frame::cosTheta(bRec.wo) / Frame::cosTheta(bRec.wi));
 				} else {
-					weight[1-mode] = bsdf->eval(bRec, (EMeasure) measure) / pdf[1-mode];
+					if(!heterogeneousrefractive)
+						weight[1-mode] = bsdf->eval(bRec, (EMeasure) measure) / pdf[1-mode];
+					else
+						weight[1-mode] = bsdf->eval(bRec, its.p, (EMeasure) measure) / pdf[1-mode];
 				}
 				bRec.reverse();
 
@@ -232,7 +248,13 @@ bool PathVertex::sampleNext(const Scene *scene, Sampler *sampler,
 		case EMediumInteraction: {
 				const MediumSamplingRecord &mRec = getMediumSamplingRecord();
 				const PhaseFunction *phase = succEdge->medium->getPhaseFunction();
-				Vector wi = normalize(pred->getPosition() - mRec.p);
+				Vector wi;
+				refIndex = pred->refIndex;
+				if(succEdge->medium->isheterogeneousrefractive()){
+					wi = normalize(-mRec.d); // the direction of velocity wont be the straight line joining pred and curr vertices.
+				}else{
+					wi = normalize(pred->getPosition() - mRec.p);
+				}
 				PhaseFunctionSamplingRecord pRec(mRec, wi, mode);
 
 				weight[mode] = mRec.sigmaS * phase->sample(pRec, pdf[mode], sampler);
@@ -860,8 +882,10 @@ Spectrum PathVertex::eval(const Scene *scene, const PathVertex *pred,
 
 				if (measure == EArea)
 					measure = ESolidAngle;
-
-				result = bsdf->eval(bRec, measure);
+				if(!bsdf->ishroughdielectric())
+					result = bsdf->eval(bRec, measure);
+				else
+					result = bsdf->eval(bRec, its.p, measure);
 
 				/* Prevent light leaks due to the use of shading normals */
 				Float wiDotGeoN = dot(its.geoFrame.n, wi),
@@ -975,7 +999,11 @@ Float PathVertex::evalPdf(const Scene *scene, const PathVertex *pred,
 				Vector wi = normalize(predP - its.p);
 
 				BSDFSamplingRecord bRec(its, its.toLocal(wi), its.toLocal(wo), mode);
-				result = bsdf->pdf(bRec, measure == EArea ? ESolidAngle : measure);
+
+				if(!bsdf->ishroughdielectric())
+					result = bsdf->pdf(bRec, measure == EArea ? ESolidAngle : measure);
+				else
+					result = bsdf->pdf(bRec, its.p, measure == EArea ? ESolidAngle : measure);
 
 				/* Prevent light leaks due to the use of shading normals */
 				Float wiDotGeoN = dot(its.geoFrame.n, wi),
@@ -1046,7 +1074,7 @@ Spectrum PathVertex::sampleDirect(const Scene *scene, Sampler *sampler,
 	else
 		value = scene->sampleSensorDirect(dRec, rsamp, false);
 
-	if (value.isZero())
+	if (value.isZero() || value.isNaN())
 		return Spectrum(0.0f);
 
 	const AbstractEmitter *ae = static_cast<const AbstractEmitter *>(dRec.object);
@@ -1219,6 +1247,7 @@ Point PathVertex::getPosition() const {
 		case ESensorSample:
 			return getPositionSamplingRecord().p;
 		default:
+//			print_trace();
 			SLog(EError, "PathVertex::getPosition(): Encountered an "
 				"unsupported vertex type (%i)!", type);
 			return Point(0.0f);
@@ -1307,9 +1336,15 @@ bool PathVertex::getSamplePosition(const PathVertex *v, Point2 &result) const {
 
 	const PositionSamplingRecord &pRec = getPositionSamplingRecord();
 	const Sensor *sensor = static_cast<const Sensor *>(pRec.object);
-	const DirectionSamplingRecord dRec(v->getPosition() - getPosition());
+	if(v->isMediumInteraction() && v->getMediumSamplingRecord().medium->isheterogeneousrefractive()){
+		const DirectionSamplingRecord dRec(v->getMediumSamplingRecord().drev);
 
-	return sensor->getSamplePosition(pRec, dRec, result);
+		return sensor->getSamplePosition(pRec, dRec, result);
+	}else{
+		const DirectionSamplingRecord dRec(v->getPosition() - getPosition());
+
+		return sensor->getSamplePosition(pRec, dRec, result);
+	}
 }
 
 bool PathVertex::connect(const Scene *scene,

@@ -2,6 +2,8 @@ Import('env', 'plugins')
 
 plugins += env.SharedLibrary('constvolume', ['constvolume.cpp'])
 plugins += env.SharedLibrary('gridvolume', ['gridvolume.cpp'])
+plugins += env.SharedLibrary('splinevolume', ['splinevolume.cpp'])
+plugins += env.SharedLibrary('acousticrifvolume', ['acousticrifvolume.cpp'])
 plugins += env.SharedLibrary('hgridvolume', ['hgridvolume.cpp'])
 plugins += env.SharedLibrary('volcache', ['volcache.cpp'])
 

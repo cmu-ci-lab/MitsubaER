@@ -27,7 +27,7 @@ def installAs(target, path, prefix = None):
 	return result
 
 if not 'DISTDIR' in env:
-	print 'The \"DISTDIR\" variable is missing. Please update your configuration file!'
+	print('The \"DISTDIR\" variable is missing. Please update your configuration file!')
 	Exit(1)
 
 distDir = env.GetBuildPath(env['DISTDIR'])
@@ -48,11 +48,11 @@ if 'linux' in sys.platform:
 		installTargets += env.Install(os.path.join(distDir, 'plugins'), plugin)
 	install(distDir, ['libcore/libmitsuba-core.so', 'libhw/libmitsuba-hw.so',
 			'librender/libmitsuba-render.so', 'libbidir/libmitsuba-bidir.so'])
-	for ver in hasPython:
-		installAs(os.path.join(distDir, 'python/'+ver+'/mitsuba.so'), 'libpython/mitsuba_python' + ver + '.so')
+#	for ver in hasPython:
+#		installAs(os.path.join(distDir, 'python/'+ver+'/mitsuba.so'), 'libpython/mitsuba_python' + ver + '.so')
 	install(distDir, ['mitsuba/mitsuba', 'mitsuba/mtssrv', 'mitsuba/mtsutil'])
-	if hasQt:
-		install(distDir, ['mtsgui/mtsgui'])
+#	if hasQt:
+#		install(distDir, ['mtsgui/mtsgui'])
 	if hasCollada:
 		install(distDir, ['converter/mtsimport'])
 if sys.platform == 'win32':

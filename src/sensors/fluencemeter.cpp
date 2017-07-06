@@ -106,6 +106,12 @@ public:
 		return Spectrum(1.0f);
 	}
 
+	bool getSamplePosition(const PositionSamplingRecord &pRec,
+			const DirectionSamplingRecord &dRec, Point2 &samplePosition) const {
+		samplePosition = pRec.uv;
+		return true;
+	}
+
 	Spectrum evalPosition(const PositionSamplingRecord &pRec) const {
 		return Spectrum((pRec.measure == EDiscrete) ? 1.0f : 0.0f);
 	}

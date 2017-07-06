@@ -85,6 +85,29 @@ Spectrum BSDF::getDiffuseReflectance(const Intersection &its) const {
 	return eval(bRec) * M_PI;
 }
 
+Spectrum BSDF::sample(BSDFSamplingRecord &bRec, const Point &p, const Point2 &sample) const{
+	NotImplementedError("sample");
+	return Spectrum(0.0);
+}
+
+Spectrum BSDF::eval(const BSDFSamplingRecord &bRec, const Point &p,
+	EMeasure measure) const{
+	NotImplementedError("eval");
+	return Spectrum(0.0);
+}
+
+Spectrum BSDF::sample(BSDFSamplingRecord &bRec, Float &pdf, const Point &p,
+	const Point2 &sample) const{
+	NotImplementedError("sample");
+	return Spectrum(0.0);
+}
+
+Float BSDF::pdf(const BSDFSamplingRecord &bRec, const Point &p,
+	EMeasure measure) const{
+	NotImplementedError("pdf");
+	return Float(0.0);
+}
+
 Texture *BSDF::ensureEnergyConservation(Texture *texture,
 		const std::string &paramName, Float max) const {
 	if (!m_ensureEnergyConservation)

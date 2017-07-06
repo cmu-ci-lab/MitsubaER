@@ -22,6 +22,10 @@
 
 #include <mitsuba/core/stream.h>
 
+#include <execinfo.h>
+#include <stdio.h>
+#include <unistd.h>
+
 MTS_NAMESPACE_BEGIN
 /**
  * \headerfile mitsuba/core/vector.h mitsuba/mitsuba.h
@@ -531,11 +535,22 @@ template <typename T> struct TVector3 {
 		return TVector3(-x, -y, -z);
 	}
 
+	void print_trace(void) const{
+	    size_t size;
+	    enum Constexpr { MAX_SIZE = 1024 };
+	    void *array[MAX_SIZE];
+	    size = backtrace(array, MAX_SIZE);
+	    backtrace_symbols_fd(array, size, STDOUT_FILENO);
+	    puts("");
+	}
+
 	/// Divide the vector by the given scalar and return the result
 	TVector3 operator/(T f) const {
 #ifdef MTS_DEBUG
-		if (f == 0)
+		if (f == 0){
 			SLog(EWarn, "Vector3: Division by zero!");
+			print_trace();
+		}
 #endif
 		T recip = (T) 1 / f;
 		return TVector3(x * recip, y * recip, z * recip);

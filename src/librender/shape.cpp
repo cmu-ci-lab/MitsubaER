@@ -129,6 +129,11 @@ void Shape::addChild(const std::string &name, ConfigurableObject *child) {
 	const Class *cClass = child->getClass();
 	if (cClass->derivesFrom(MTS_CLASS(BSDF))) {
 		m_bsdf = static_cast<BSDF *>(child);
+		if(m_bsdf->isheterogeneousbsdf())
+			static_cast<BSDF *>(child)->m_shape = this;
+		if(m_interiorMedium && m_interiorMedium->isheterogeneousrefractive() && !m_bsdf->isheterogeneousbsdf()){
+			Log(EError, "A bsdf that is non-heterogeneous is being attached for the heterogeneous RIF!");
+		}
 	} else if (cClass->derivesFrom(MTS_CLASS(Emitter))) {
 		Emitter *emitter = static_cast<Emitter *>(child);
 		if (m_emitter != NULL)
@@ -164,6 +169,13 @@ void Shape::addChild(const std::string &name, ConfigurableObject *child) {
 				Log(EError, "Shape \"%s\" has both an interior medium "
 					"and a subsurface scattering model -- please choose one or the other!", getName().c_str());
 			m_interiorMedium = static_cast<Medium *>(child);
+			if(m_interiorMedium->isheterogeneousrefractive()){
+				m_interiorMedium->m_shape = this;
+				if(m_bsdf && !m_bsdf->isheterogeneousbsdf()){
+					Log(EError, "A shape with heterogeneous refractive index medium should only have a bsdf that is also heterogeneous!");
+				}
+				m_interiorMedium->buildShape();
+			}
 		} else if (name == "exterior") {
 			Assert(m_exteriorMedium == NULL || m_exteriorMedium == child);
 			m_exteriorMedium = static_cast<Medium *>(child);

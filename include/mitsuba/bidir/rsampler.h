@@ -77,6 +77,16 @@ public:
 	/// Return the underlying random number generator
 	inline Random *getRandom() { return m_random; }
 
+	/* Just return the next random Float value */
+	Float nextFloat() {
+		return m_random->nextFloat();
+	}
+
+	/* Just return the next random size_t value */
+	size_t nextSize(size_t n) {
+		return m_random->nextSize(n);
+	}
+
 	/**
 	 * Update the current sample index, but without
 	 * changing the RNG state. This is useful if the

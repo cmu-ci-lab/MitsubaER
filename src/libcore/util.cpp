@@ -589,6 +589,20 @@ Vector sphericalDirection(Float theta, Float phi) {
 	);
 }
 
+
+#if defined(FLOATDEBUG)
+void coordinateSystem(const VectorF &a, VectorF &b, VectorF &c) {
+	if (std::abs(a.x) > std::abs(a.y)) {
+		FLOAT invLen = 1.0f / std::sqrt(a.x * a.x + a.z * a.z);
+		c = VectorF(a.z * invLen, 0.0f, -a.x * invLen);
+	} else {
+		FLOAT invLen = 1.0f / std::sqrt(a.y * a.y + a.z * a.z);
+		c = VectorF(0.0f, a.z * invLen, -a.y * invLen);
+	}
+	b = cross(c, a);
+}
+#endif
+
 void coordinateSystem(const Vector &a, Vector &b, Vector &c) {
 	if (std::abs(a.x) > std::abs(a.y)) {
 		Float invLen = 1.0f / std::sqrt(a.x * a.x + a.z * a.z);

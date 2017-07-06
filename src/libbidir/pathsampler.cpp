@@ -214,7 +214,7 @@ void PathSampler::sampleSplats(const Point2i &offset, SplatList &list) {
 						   the creation of additional vertices (index-matched boundaries etc.) */
 						int interactions = remaining;
 						if (value.isZero() || !connectionEdge.pathConnectAndCollapse(
-								m_scene, vsEdge, vs, vt, vtEdge, interactions))
+								m_scene, vsEdge, vs, vt, vtEdge, interactions, m_emitterSampler))
 							continue;
 
 						depth += interactions;

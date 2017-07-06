@@ -327,6 +327,11 @@ extern MTS_EXPORT_CORE bool solveLinearSystem2x2(const Float a[2][2], const Floa
  *     follows: <tt>s, t = coordinateSystem(n)</tt>
  * \ingroup libpython
  */
+
+#if defined(FLOATDEBUG)
+extern MTS_EXPORT_CORE void coordinateSystem(const VectorF &a, VectorF &b, VectorF &c);
+#endif
+
 extern MTS_EXPORT_CORE void coordinateSystem(const Vector &a, Vector &b, Vector &c);
 
 

@@ -201,7 +201,11 @@ void ParticleTracer::process(const WorkUnit *workUnit, WorkResult *workResult,
 				handleSurfaceInteraction(depth, nullInteractions, delta, its, medium, throughput*power);
 
 				BSDFSamplingRecord bRec(its, m_sampler, EImportance);
-				Spectrum bsdfWeight = bsdf->sample(bRec, m_sampler->next2D());
+				Spectrum bsdfWeight;
+				if(bsdf->isheterogeneousbsdf())
+					bsdfWeight = bsdf->sample(bRec, its.p, m_sampler->next2D());
+				else
+					bsdfWeight = bsdf->sample(bRec, m_sampler->next2D());
 				if (bsdfWeight.isZero())
 					break;
 

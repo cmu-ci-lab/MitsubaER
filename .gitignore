@@ -47,3 +47,15 @@ mitsuba.*.log
 .settings
 .cproject
 .project
+
+# Project related output files 
+*.mexa64
+*.exr
+*.png
+*.fig
+*.avi
+*.swp
+*.m~
+
+# Random backup files
+*_logged.cpp

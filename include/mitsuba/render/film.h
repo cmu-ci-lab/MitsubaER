@@ -22,6 +22,7 @@
 
 #include <mitsuba/render/sampler.h>
 #include <mitsuba/render/imageblock.h>
+#include <mitsuba/render/pathlengthsampler.h>
 
 MTS_NAMESPACE_BEGIN
 
@@ -36,6 +37,23 @@ MTS_NAMESPACE_BEGIN
  */
 class MTS_EXPORT_RENDER Film : public ConfigurableObject {
 public:
+
+	/**
+	 * This enumeration determines all the light transport decomposition types
+	 * supported by the implemented sensors.
+	 * number of channels, and how they should be interpreted
+	 */
+	enum EDecompositionType {
+		/// Steady-state light transport (no decomposition)
+		ESteadyState              = 0x00,
+
+		/// Transient light transport (decomposition by pathlength)
+		ETransient                = 0x01,
+
+		/// Bounce light transport (decomposition by bounce order)
+		EBounce                   = 0x02,
+	};
+
 	/// Ignoring the crop window, return the resolution of the underlying sensor
 	inline const Vector2i &getSize() const { return m_size; }
 
@@ -63,11 +81,19 @@ public:
 	/// Develop the film and write the result to the previously specified filename
 	virtual void develop(const Scene *scene, Float renderTime) = 0;
 
-	inline bool isTransient() const {return m_transient; }
-	inline Float getPathMin() const {return m_pathMin; }
-	inline Float getPathMax() const {return m_pathMax; }
-	inline Float getPathSample() const {return m_pathSample; }
+	inline EDecompositionType getDecompositionType() const {return m_decompositionType; }
+	inline Float getDecompositionMinBound() const {return m_decompositionMinBound; }
+	inline Float getDecompositionMaxBound() const {return m_decompositionMaxBound; }
+	inline Float getDecompositionBinWidth() const {return m_decompositionBinWidth; }
 	inline size_t getFrames() const {return m_frames; }
+	inline size_t getSubSamples() const {return m_subSamples; }
+
+	ref<PathLengthSampler> getPathLengthSampler() {return m_pathLengthSampler;}
+
+	inline bool isCalibratedTransient() const {return m_calibratedTransient; }
+	inline size_t getForceBounces() const {return m_forceBounces; }
+	inline size_t getSBounces() const {return m_sBounces; }
+	inline size_t getTBounces() const {return m_tBounces; }
 
 	/**
 	 * \brief Develop the contents of a subregion of the film and store
@@ -139,12 +165,21 @@ protected:
 	ref<ReconstructionFilter> m_filter;
 
 protected:
-// For BDPT transient renderer:
-	bool m_transient;
-	Float m_pathMin;
-	Float m_pathMax;
-	Float m_pathSample;
+// For BDPT decomposition renderer:
+	EDecompositionType m_decompositionType;
+	Float m_decompositionMinBound;
+	Float m_decompositionMaxBound;
+	Float m_decompositionBinWidth;
 	size_t m_frames;
+	size_t m_subSamples;
+
+	// For special case of ToF Renderer
+	ref<PathLengthSampler> m_pathLengthSampler;
+
+	bool m_calibratedTransient;
+	bool m_forceBounces;
+	unsigned int m_sBounces;
+	unsigned int m_tBounces;
 };
 
 MTS_NAMESPACE_END

@@ -60,6 +60,7 @@ set(HDRS
   ${INCLUDE_DIR}/shvector.h
   ${INCLUDE_DIR}/spectrum.h
   ${INCLUDE_DIR}/spline.h
+  ${INCLUDE_DIR}/basisspline.h
   ${INCLUDE_DIR}/sse.h
   ${INCLUDE_DIR}/ssemath.h
   ${INCLUDE_DIR}/ssevector.h

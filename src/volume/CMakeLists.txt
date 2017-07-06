@@ -9,5 +9,7 @@ endmacro()
 
 add_volume(constvolume constvolume.cpp)
 add_volume(gridvolume  gridvolume.cpp)
+add_volume(splinevolume  splinevolume.cpp)
+add_volume(acousticrifvolume acousticrifvolume.cpp)
 add_volume(hgridvolume hgridvolume.cpp)
 add_volume(volcache    volcache.cpp)
