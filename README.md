@@ -1,5 +1,7 @@
 # Mitsuba Eikonal Rendering 
 
+Please check: https://imaging.cs.cmu.edu/rrte/ for more details
+
 @article{pediredla2020path,
   title={Path tracing estimators for refractive radiative transfer},
   author={Pediredla, Adithya and Chalmiani, Yasin Karimi and Scopelliti, Matteo Giuseppe and Chamanzar, Maysam and Narasimhan, Srinivasa and Gkioulekas, Ioannis},
