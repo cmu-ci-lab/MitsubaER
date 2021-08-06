@@ -1,5 +1,8 @@
 # Mitsuba Eikonal Rendering 
 
+The docker image for this code is publicly available at adithyapediredla/mitsubaer.  
+Please contact adithya.k.pediredla@gmail.com for any questions. 
+
 Please check: https://imaging.cs.cmu.edu/rrte/ for more details
 
 @article{pediredla2020path,
